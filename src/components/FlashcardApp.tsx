@@ -10,6 +10,8 @@ import {
   XCircle,
   Download,
   Upload,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { initialCards, Flashcard } from "../data/flashcards";
 
@@ -235,6 +237,50 @@ const FlashcardApp = () => {
     }
   };
 
+  // Add a new function to delete a single card
+  const handleDeleteCard = () => {
+    if (filteredCards.length === 0) return;
+
+    const currentCard = filteredCards[currentIndex];
+
+    if (
+      window.confirm(
+        `Are you sure you want to delete this card: "${currentCard.question}"?`
+      )
+    ) {
+      const updatedCards = cards.filter((card) => card.id !== currentCard.id);
+      setCards(updatedCards);
+
+      // If we're deleting the last card in the filtered list, move to the previous card
+      if (currentIndex === filteredCards.length - 1 && currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1);
+      }
+
+      setNotification({
+        message: "Card deleted successfully",
+        type: "success",
+      });
+    }
+  };
+
+  // Add a function to delete all cards
+  const handleDeleteAllCards = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete ALL cards? This action cannot be undone."
+      )
+    ) {
+      setCards([]);
+      setCurrentIndex(0);
+      setFlipped(false);
+      setSelectedCategory("All");
+      setNotification({
+        message: "All cards have been deleted",
+        type: "success",
+      });
+    }
+  };
+
   return (
     <div className="sm:container flex flex-col min-h-screen text-white p-6">
       {/* Hidden file input for import */}
@@ -304,9 +350,17 @@ const FlashcardApp = () => {
             </button>
             <button
               onClick={handleResetAllCards}
-              className="text-sm px-3 py-1 bg-red-500/20 text-red-300 rounded-full hover:bg-red-500/30 transition-colors"
+              className="text-sm px-3 py-1 bg-red-500/20 text-red-300 rounded-full hover:bg-red-500/30 transition-colors flex items-center gap-1"
             >
+              <RotateCcw size={14} />
               Reset
+            </button>
+            <button
+              onClick={handleDeleteAllCards}
+              className="text-sm px-3 py-1 bg-red-600/20 text-red-300 rounded-full hover:bg-red-600/30 transition-colors flex items-center gap-1"
+            >
+              <AlertTriangle size={14} />
+              Delete All
             </button>
           </div>
         </div>
@@ -421,6 +475,16 @@ const FlashcardApp = () => {
                       <span>Not Mastered</span>
                     </>
                   )}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteCard();
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
