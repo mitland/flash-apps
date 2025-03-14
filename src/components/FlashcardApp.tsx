@@ -12,6 +12,8 @@ import {
   Upload,
   Trash2,
   AlertTriangle,
+  BookOpen,
+  ChevronDown,
 } from "lucide-react";
 import { initialCards, Flashcard } from "../data/flashcards";
 
@@ -19,6 +21,12 @@ import { initialCards, Flashcard } from "../data/flashcards";
 const getInitialCards = (): Flashcard[] => {
   const savedCards = localStorage.getItem("flashcards");
   return savedCards ? JSON.parse(savedCards) : initialCards;
+};
+
+// Get unique categories from initial cards for presets
+const getPresetCategories = (): string[] => {
+  const categories = [...new Set(initialCards.map((card) => card.category))];
+  return categories;
 };
 
 const FlashcardApp = () => {
@@ -38,9 +46,29 @@ const FlashcardApp = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [notification, setNotification] = useState<{
     message: string;
-    type: "success" | "error";
+    type: "success" | "error" | "info";
   } | null>(null);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [showPresetsDropdown, setShowPresetsDropdown] = useState(false);
+  const presetsRef = useRef<HTMLDivElement>(null);
+  const presetCategories = getPresetCategories();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        presetsRef.current &&
+        !presetsRef.current.contains(event.target as Node)
+      ) {
+        setShowPresetsDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Save cards to localStorage whenever they change
   useEffect(() => {
@@ -281,6 +309,46 @@ const FlashcardApp = () => {
     }
   };
 
+  // Add a function to add preset cards by category
+  const handleAddPresetCards = (category: string) => {
+    // Find all cards from initialCards that match the selected category
+    const presetCards = initialCards.filter(
+      (card) => card.category === category
+    );
+
+    if (presetCards.length === 0) {
+      setNotification({
+        message: `No preset cards found for category: ${category}`,
+        type: "error",
+      });
+      return;
+    }
+
+    // Check if any of these cards already exist in the current cards (by question)
+    const existingQuestions = new Set(cards.map((card) => card.question));
+    const newCards = presetCards.filter(
+      (card) => !existingQuestions.has(card.question)
+    );
+
+    if (newCards.length === 0) {
+      setNotification({
+        message: `All ${category} cards are already in your collection`,
+        type: "info",
+      });
+      return;
+    }
+
+    // Add the new cards to the current cards
+    setCards([...cards, ...newCards]);
+    setSelectedCategory(category);
+    setShowPresetsDropdown(false);
+
+    setNotification({
+      message: `Added ${newCards.length} ${category} cards to your collection`,
+      type: "success",
+    });
+  };
+
   return (
     <div className="sm:container flex flex-col min-h-screen text-white p-6">
       {/* Hidden file input for import */}
@@ -298,13 +366,17 @@ const FlashcardApp = () => {
           className={`fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg transition-opacity duration-300 flex items-center gap-2 ${
             notification.type === "success"
               ? "bg-green-500/80 text-white"
-              : "bg-red-500/80 text-white"
+              : notification.type === "error"
+              ? "bg-red-500/80 text-white"
+              : "bg-blue-500/80 text-white"
           }`}
         >
           {notification.type === "success" ? (
             <CheckCircle size={16} />
-          ) : (
+          ) : notification.type === "error" ? (
             <XCircle size={16} />
+          ) : (
+            <AlertTriangle size={16} />
           )}
           <span>{notification.message}</span>
         </div>
@@ -334,6 +406,36 @@ const FlashcardApp = () => {
             <p className="text-gray-400 text-sm">Last saved: {lastSaved}</p>
           )}
           <div className="ml-auto flex gap-2">
+            <div className="relative" ref={presetsRef}>
+              <button
+                onClick={() => setShowPresetsDropdown(!showPresetsDropdown)}
+                className="text-sm px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full hover:bg-purple-500/30 transition-colors flex items-center gap-1"
+              >
+                <BookOpen size={14} />
+                Add Presets
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${
+                    showPresetsDropdown ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {showPresetsDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg z-10 py-1 border border-gray-700">
+                  {presetCategories.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => handleAddPresetCards(category)}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 transition-colors"
+                    >
+                      {category} Cards
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => fileInputRef.current?.click()}
               className="text-sm px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full hover:bg-blue-500/30 transition-colors flex items-center gap-1"
